@@ -69,6 +69,14 @@ resource "aws_ecs_task_definition" "skillboard_task" {
           hostPort      = 3000
         }
       ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group" = aws_cloudwatch_log_group.ecs.name
+          "awslogs-region" : data.aws_region.current.name
+          "awslogs-stream-prefix" = "task"
+        }
+      }
     }
   ])
 
