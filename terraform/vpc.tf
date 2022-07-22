@@ -1,96 +1,36 @@
-data "aws_caller_identity" "current" {}
-data "aws_region" "current" {}
+data "aws_availability_zones" "available" {}
 
-resource "aws_vpc" "skillboard" {
-  instance_tenancy     = "default"
-  enable_dns_hostnames = true
-  enable_dns_support   = true
+module "vpc" {
+  source = "./modules/vpc"
 
-  cidr_block = local.vpc_cidr
-
-  tags = {
-    Name = "Skillboard"
-  }
-
+  vpc_cidr    = "10.0.0.0/24"
+  project     = "skillboard"
+  environment = "development"
+  azs         = data.aws_availability_zones.available.names
 }
 
-resource "aws_eip" "ngw" {
-  vpc = true
-}
 
-resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.skillboard.id
-}
+# resource "aws_vpc_endpoint" "ecr_api" {
+#   vpc_id       = module.vpc.vpc_id
+#   service_name = "com.amazonaws.us-east-1.ecr.api"
+# }
 
-resource "aws_nat_gateway" "ngw" {
-  allocation_id = aws_eip.ngw.id
-  subnet_id     = aws_subnet.dmz.id
-  depends_on = [
-    aws_internet_gateway.igw
-  ]
-}
+# resource "aws_vpc_endpoint_route_table_association" "ecr_api_private" {
+#   count           = length(module.vpc.priv_route_table_ids)
+#   route_table_id  = module.vpc.priv_route_table_ids[count.index]
+#   vpc_endpoint_id = aws_vpc_endpoint.ecr_api.id
 
-# Rout Tables
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.skillboard.id
-  tags   = local.dmz_subnet_tags
-}
+#   depends_on = [time_sleep.wait]
+# }
 
-resource "aws_route" "pub_default_gateway" {
-  route_table_id         = aws_route_table.public.id
-  gateway_id             = aws_internet_gateway.igw.id
-  destination_cidr_block = "0.0.0.0/0"
-}
+# resource "aws_vpc_endpoint_route_table_association" "ecr_api_public" {
+#   route_table_id  = module.vpc.dmz_route_table_id
+#   vpc_endpoint_id = aws_vpc_endpoint.ecr_api.id
 
-resource "aws_route_table" "private" {
-  vpc_id = aws_vpc.skillboard.id
-}
+#   depends_on = [time_sleep.wait]
+# }
 
-resource "aws_route" "private_default_gateway" {
-  destination_cidr_block = "0.0.0.0/0"
-  route_table_id         = aws_route_table.private.id
-  nat_gateway_id         = aws_nat_gateway.ngw.id
-}
-
-resource "aws_subnet" "dmz" {
-  vpc_id                  = aws_vpc.skillboard.id
-  cidr_block              = cidrsubnet(local.vpc_cidr, 4, 0)
-  availability_zone       = "us-east-1c"
-  map_public_ip_on_launch = true
-
-  tags = local.dmz_subnet_tags
-}
-
-resource "aws_route_table_association" "pub_dmz" {
-  subnet_id      = aws_subnet.dmz.id
-  route_table_id = aws_route_table.public.id
-}
-
-# DB's/Redis/Cache
-resource "aws_subnet" "db" {
-  vpc_id                  = aws_vpc.skillboard.id
-  cidr_block              = cidrsubnet(local.vpc_cidr, 4, 2)
-  availability_zone       = "us-east-1a"
-  map_public_ip_on_launch = false
-
-  tags = local.db_subnet_tags
-}
-
-resource "aws_route_table_association" "priv_db" {
-  subnet_id      = aws_subnet.db.id
-  route_table_id = aws_route_table.private.id
-}
-
-resource "aws_subnet" "app" {
-  vpc_id                  = aws_vpc.skillboard.id
-  cidr_block              = cidrsubnet(local.vpc_cidr, 4, 4)
-  availability_zone       = "us-east-1b"
-  map_public_ip_on_launch = false
-
-  tags = local.app_subnet_tags
-}
-
-resource "aws_route_table_association" "priv_app" {
-  subnet_id      = aws_subnet.app.id
-  route_table_id = aws_route_table.private.id
-}
+# resource "time_sleep" "wait" {
+#   depends_on      = [module.vpc]
+#   create_duration = "10s"
+# }

@@ -44,8 +44,8 @@ resource "aws_apigatewayv2_route" "ui" {
 
 resource "aws_apigatewayv2_vpc_link" "ui" {
   name               = "ui"
-  security_group_ids = [aws_security_group.ecs.id]
-  subnet_ids         = [aws_subnet.app.id]
+  security_group_ids = [module.nuxt_ui.security_group_id]
+  subnet_ids         = module.vpc.app_subnet_ids
 }
 
 resource "aws_apigatewayv2_integration" "ui" {
@@ -54,5 +54,5 @@ resource "aws_apigatewayv2_integration" "ui" {
   connection_id      = aws_apigatewayv2_vpc_link.ui.id
   integration_type   = "HTTP_PROXY"
   integration_method = "ANY"
-  integration_uri    = aws_service_discovery_service.skillboard_nuxt.arn
+  integration_uri    = module.nuxt_ui.service_discovery_arn
 }

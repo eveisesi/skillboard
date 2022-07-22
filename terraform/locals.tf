@@ -17,5 +17,5 @@ locals {
     db  = true
   }
 
-  vpc_cidr = "10.0.0.0/22"
+  vpc_cidr = "10.0.0.0/24"
 }
