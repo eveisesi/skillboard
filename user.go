@@ -1,0 +1,79 @@
+package skillboard
+
+import (
+	"time"
+
+	"github.com/volatiletech/null"
+	"golang.org/x/oauth2"
+)
+
+type User struct {
+	ID                string      `db:"id" json:"id"`
+	CharacterID       uint64      `db:"character_id,omitempty" json:"character_id"`
+	AccessToken       string      `db:"access_token" json:"-"`
+	RefreshToken      string      `db:"refresh_token" json:"-"`
+	Expires           time.Time   `db:"expires," json:"expires"`
+	OwnerHash         string      `db:"owner_hash" json:"owner_hash"`
+	Scopes            UserScopes  `db:"scopes,omitempty" json:"scopes,omitempty"`
+	IsNew             bool        `db:"is_new" json:"is_new"`
+	IsProcessing      bool        `db:"is_processing" json:"is_processing"`
+	Disabled          bool        `db:"disabled" json:"disabled"`
+	DisabledReason    null.String `db:"disabled_reason,omitempty" json:"disabled_reason"`
+	DisabledTimestamp null.Time   `db:"disabled_timestamp,omitempty" json:"disabled_timestamp"`
+	LastLogin         time.Time   `db:"last_login" json:"last_login"`
+	LastProcessed     null.Time   `db:"last_processed" json:"last_processed"`
+	CreatedAt         time.Time   `db:"created_at" json:"-"`
+	UpdatedAt         time.Time   `db:"updated_at" json:"-"`
+}
+
+func (i *User) ApplyToken(t *oauth2.Token) {
+	i.AccessToken = t.AccessToken
+	i.RefreshToken = t.RefreshToken
+	i.Expires = t.Expiry
+}
+
+type UserSettings struct {
+	UserID          string     `db:"user_id" json:"user_id" form:"-"`
+	Visibility      Visibility `db:"visibility" form:"visibility" json:"visibility"`
+	VisibilityToken string     `db:"visibility_token" json:"visibility_token"`
+	HideSkills      bool       `db:"hide_skills" form:"hide_skills" json:"hide_skills"`
+	HideQueue       bool       `db:"hide_queue" form:"hide_queue" json:"hide_queue"`
+	HideAttributes  bool       `db:"hide_attributes" form:"hide_attributes" json:"hide_attributes"`
+	HideFlyable     bool       `db:"hide_flyable" form:"hide_flyable" json:"hide_flyable"`
+	HideImplants    bool       `db:"hide_implants" form:"hide_settings" json:"hide_settings"`
+	CreatedAt       time.Time  `db:"created_at" json:"-" form:"-"`
+	UpdatedAt       time.Time  `db:"updated_at" json:"-" form:"-"`
+}
+
+type Visibility uint
+
+const (
+	VisibilityPublic Visibility = iota + 1
+	VisibilityToken
+	VisibilityPrivate
+)
+
+var MapVisibility = map[Visibility]string{
+	VisibilityPrivate: "Private",
+	VisibilityToken:   "Token",
+	VisibilityPublic:  "Public",
+}
+
+var AllVisibilities = []Visibility{VisibilityPrivate, VisibilityPublic, VisibilityToken}
+
+func (v Visibility) Valid() bool {
+	for _, i := range AllVisibilities {
+		if i == v {
+			return true
+		}
+	}
+	return false
+}
+
+func (v Visibility) String() string {
+	return MapVisibility[v]
+}
+
+func (v Visibility) Uint() uint {
+	return uint(v)
+}
