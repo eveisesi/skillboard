@@ -8,6 +8,7 @@ resource "aws_lambda_function" "users_handler" {
 
   environment {
     variables = {
+      AUTH_TABLE  = aws_dynamodb_table.auth_attempts.name
       USERS_TABLE = aws_dynamodb_table.users.name
     }
   }

@@ -13,3 +13,19 @@ resource "aws_dynamodb_table" "users" {
     type = "S"
   }
 }
+
+resource "aws_dynamodb_table" "auth_attempts" {
+  name         = "skillboard-auth-attempts-development"
+  hash_key     = "State"
+  billing_mode = "PAY_PER_REQUEST"
+
+  ttl {
+    enabled        = true
+    attribute_name = "Expires"
+  }
+
+  attribute {
+    name = "State"
+    type = "S"
+  }
+}

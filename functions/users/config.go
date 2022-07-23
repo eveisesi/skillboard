@@ -1,12 +1,17 @@
 package main
 
 import (
-	"context"
+	"crypto/rsa"
 	"fmt"
 	"net/url"
+	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	ssmconfig "github.com/onetwentyseven-dev/go-ssm-config"
+	"github.com/aws/aws-sdk-go-v2/service/ssm"
+	"github.com/pkg/errors"
+
+	"github.com/onetwentyseven-dev/go-config"
+	ssmSource "github.com/onetwentyseven-dev/go-config/ssm"
 )
 
 // type config struct {
@@ -22,18 +27,41 @@ import (
 // 	}
 // }
 
-var ssmConfig struct {
-	EveClientID       string `ssm:"eve/client-id" required:"true"`
-	EveClientSecret   string `ssm:"eve/client-secret" required:"true"`
-	EveCallbackURIStr string `ssm:"eve/callback-uri" required:"true"`
-	EveCallbackURI    *url.URL
+var appConfig struct {
+	Eve struct {
+		ClientID       string `ssm:"eve/client-id" required:"true"`
+		ClientSecret   string `ssm:"eve/client-secret" required:"true"`
+		CallbackURIStr string `ssm:"eve/callback-uri" required:"true"`
+		CallbackURI    *url.URL
+	}
+	Rsa struct {
+		PrivateKey64 string `ssm:"rsa/private-b64" required:"true"`
+		PrivateKey   *rsa.PrivateKey
+	}
+
+	Dynamo struct {
+		UserTable string `env:"USER_TABLE" required:"true"`
+		AuthTable string `env:"AUTH_TABLE" required:"true"`
+	}
+
+	// S3 struct {
+	// 	CharacterData string `env:"CHARACTER_DATA_BUCKET" required:"true"`
+	// }
 }
 
 func loadConfig(awsConfig aws.Config) {
+	env := os.Getenv("ENVIRONMENT")
 
-	err := ssmconfig.Process(context.TODO(), awsConfig, "skillboard", &ssmConfig)
+	ssmClient := ssm.NewFromConfig(awsConfig)
+
+	err := config.Process(&appConfig, ssmSource.New(fmt.Sprintf("skillboard/%s", env), ssmClient))
 	if err != nil {
 		panic(fmt.Sprintf("ssmconfig: %s", err))
+	}
+
+	appConfig.Eve.CallbackURI, err = url.Parse(appConfig.Eve.CallbackURIStr)
+	if err != nil {
+		panic(errors.Wrap(err, "failed to parse EVE_CALLBACK_URI as a valid URI"))
 	}
 
 }
